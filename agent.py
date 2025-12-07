@@ -1,33 +1,40 @@
 from news_sources import fetch_market_news
+from rss_sources import fetch_google_alerts, fetch_linkedin_posts
 from summarize import summarize_batch
 from slack_client import format_for_slack, send_to_slack
-from rss_sources import fetch_google_alerts, fetch_linkedin_posts
-
-
 
 def run():
-    print("Fetching NewsAPI articles...")
+    print("Fetching NewsAPI…")
     articles = fetch_market_news()
+    print("NewsAPI returned:", len(articles))
 
-    # If NewsAPI gives nothing → fetch Google Alerts
+    # 1️⃣ NewsAPI fallback
     if not articles:
-        print("No NewsAPI results. Fetching Google Alerts...")
-        articles = fetch_google_alerts()
+        print("No NewsAPI results → Fetching Google Alerts RSS…")
+        google_articles = fetch_google_alerts()
+        print("Google Alerts returned:", len(google_articles))
+        articles = google_articles
 
-    # If still nothing → fetch LinkedIn RSS posts
+    # 2️⃣ Google Alerts fallback
     if not articles:
-        print("No Google Alerts. Fetching LinkedIn hashtag posts...")
-        articles = fetch_linkedin_posts()
+        print("No Google Alerts → Fetching LinkedIn RSS…")
+        linkedin_articles = fetch_linkedin_posts()
+        print("LinkedIn returned:", len(linkedin_articles))
+        articles = linkedin_articles
 
-    print(f"Found {len(articles)} articles")
+    # 3️⃣ If STILL nothing, send default message
+    if not articles:
+        articles = [{
+            "title": "No major news detected today.",
+            "description": "But the agent is running correctly.",
+            "url": "",
+            "source": "System"
+        }]
+
+    print("Total final articles:", len(articles))
 
     summaries = summarize_batch(articles)
+    msg = format_for_slack(summaries)
+    send_to_slack(msg)
 
-    formatted = format_for_slack(summaries)
-    send_to_slack(formatted)
-
-    print("Done")
-
-
-if __name__ == "__main__":
-    run()
+    print("DONE")
