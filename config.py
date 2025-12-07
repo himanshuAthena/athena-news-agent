@@ -20,3 +20,23 @@ COMPETITORS = [
     "ALFA Systems",
     "LTIMindtree leasing platform"
 ]
+
+GOOGLE_ALERT_FEEDS = [
+    # paste your Google Alerts RSS feed links here
+    "https://www.google.com/alerts/feeds/13018807204136963696/10644736879458580239",
+    "https://www.google.com/alerts/feeds/13018807204136963696/17538092041713281154",
+    "https://www.google.com/alerts/feeds/13018807204136963696/2049279242957894042",
+    "https://www.google.com/alerts/feeds/13018807204136963696/10644736879458578683",
+    "https://www.google.com/alerts/feeds/13018807204136963696/17538092041713280107",
+    "https://www.google.com/alerts/feeds/13018807204136963696/10644736879458579010",
+    "https://www.google.com/alerts/feeds/13018807204136963696/2049279242957897225",
+        
+]
+
+LINKEDIN_HASHTAG_FEEDS = [
+    "https://rsshub.app/linkedin/hashtag/leasing",
+    "https://rsshub.app/linkedin/hashtag/fintech",
+    "https://rsshub.app/linkedin/hashtag/assetfinance",
+    "https://rsshub.app/linkedin/hashtag/saas",
+]
+
