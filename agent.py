@@ -1,40 +1,52 @@
-from news_sources import fetch_market_news
-from rss_sources import fetch_google_alerts, fetch_linkedin_posts
+# agent.py
+from monitor_daily import fetch_monitor_daily
 from summarize import summarize_batch
-from slack_client import format_for_slack, send_to_slack
+from slack_client import send_to_slack
+
+def format_message(summaries):
+    if not summaries:
+        return "No MonitorDaily highlights found today."
+
+    lines = []
+    lines.append("*MonitorDaily – Latest Equipment Finance News*\n")
+
+    for i, art in enumerate(summaries, 1):
+        title = art["title"]
+        url = art["url"]
+        bullets = art.get("bullets", [])
+
+        # Headline
+        lines.append(f"*{i}. {title}*")
+
+        # Bullets
+        for b in bullets:
+            lines.append(b)
+
+        # Link
+        lines.append(url)
+        lines.append("")  # blank line
+
+    return "\n".join(lines)
+
+
 
 def run():
-    print("Fetching NewsAPI…")
-    articles = fetch_market_news()
-    print("NewsAPI returned:", len(articles))
+    print("=== MonitorDaily News Bot ===")
 
-    # 1️⃣ NewsAPI fallback
-    if not articles:
-        print("No NewsAPI results → Fetching Google Alerts RSS…")
-        google_articles = fetch_google_alerts()
-        print("Google Alerts returned:", len(google_articles))
-        articles = google_articles
-
-    # 2️⃣ Google Alerts fallback
-    if not articles:
-        print("No Google Alerts → Fetching LinkedIn RSS…")
-        linkedin_articles = fetch_linkedin_posts()
-        print("LinkedIn returned:", len(linkedin_articles))
-        articles = linkedin_articles
-
-    # 3️⃣ If STILL nothing, send default message
-    if not articles:
-        articles = [{
-            "title": "No major news detected today.",
-            "description": "But the agent is running correctly.",
-            "url": "",
-            "source": "System"
-        }]
-
-    print("Total final articles:", len(articles))
+    articles = fetch_monitor_daily(max_items=5)
+    print("Fetched:", len(articles))
 
     summaries = summarize_batch(articles)
-    msg = format_for_slack(summaries)
+    print("Summaries:", len(summaries))
+
+    msg = format_message(summaries)
+
+    print("\n===== DAILY HIGHLIGHTS =====\n")
+    print(msg)
+    print("\n============================\n")
+
     send_to_slack(msg)
 
-    print("DONE")
+
+if __name__ == "__main__":
+    run()
