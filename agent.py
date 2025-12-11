@@ -83,7 +83,7 @@ def main():
     print("\n===========================\n")
 
     # 4️⃣ Send to Slack
-    # send_slack_message(final_message)
+    send_slack_message(final_message)
 
 
 if __name__ == "__main__":
