@@ -1,144 +1,87 @@
-# monitor_daily.py
+# monitordaily_scraper.py
+
+from datetime import datetime, date
+from typing import Dict, Optional
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
 
-URL = "https://www.monitordaily.com/news/"
+MONITOR_HOME = "https://www.monitordaily.com/"
 
-def apply_stealth(page):
+
+def parse_date(text: str) -> Optional[datetime]:
+    """Convert 'December 11, 2025' into datetime."""
+    text = text.strip()
+    for fmt in ("%B %d, %Y", "%b %d, %Y"):
+        try:
+            return datetime.strptime(text, fmt)
+        except:
+            pass
+    return None
+
+
+def fetch_monitordaily_today() -> Optional[Dict]:
     """
-    Injects JavaScript to remove Playwright fingerprints.
-    Similar to puppeteer-extra-stealth.
+    Scrape MonitorDaily home page and return ONLY today's main article:
+    {
+        "title": "...",
+        "url": "...",
+        "excerpt": "...",
+        "published_at": datetime,
+    }
     """
-    page.add_init_script("""
-        // Remove playwright detection
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-
-        // Fake plugins
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3],
-        });
-
-        // Fake languages
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['en-US', 'en'],
-        });
-
-        // Fake Chrome object
-        window.chrome = {
-            runtime: {},
-            loadTimes: () => {},
-            csi: () => {},
-        };
-
-        // WebGL fingerprint patch
-        const getParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(param) {
-            if (param === 37445) return 'Intel Inc.';
-            if (param === 37446) return 'Intel Iris OpenGL Engine';
-            return getParameter(param);
-        };
-    """)
-
-
-def fetch_monitor_daily(max_items=8):
-    print("Fetching MonitorDaily using Playwright (custom stealth)…")
+    print("🔍 Fetching MonitorDaily main article...")
 
     with sync_playwright() as p:
-        # Launch real-like browser
-        browser = p.chromium.launch(
-            headless=True,   # TURN ON WINDOW FIRST FOR DEBUG — will switch later
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--window-size=1400,900"
-            ]
-        )
-
-        context = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1400, "height": 900},
-            screen={"width": 1400, "height": 900},
-            device_scale_factor=1,
-            java_script_enabled=True
-        )
-
-        page = context.new_page()
-
-        # Apply stealth before navigation
-        apply_stealth(page)
-
-        page.goto(URL, wait_until="networkidle", timeout=120000)
-
-        # Allow Cloudflare JS challenge to complete
-        page.wait_for_timeout(5000)
-
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(MONITOR_HOME, wait_until="networkidle", timeout=120000)
+        page.wait_for_timeout(2000)
         html = page.content()
-
-        context.close()
         browser.close()
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # Try known article selectors
-    selectors = [
-        "article.post",
-        "div.story",
-        ".post-item",
-        "article",
-        ".entry",
-    ]
+    # The first main article block
+    block = soup.find("div", class_="jeg_postblock_content")
+    if not block:
+        print("⚠ Could not find article block.")
+        return None
 
-    articles_html = []
-    for sel in selectors:
-        items = soup.select(sel)
-        if items:
-            print(f"Found articles using selector: {sel}")
-            articles_html = items
-            break
+    # Title + URL
+    title_tag = block.find("h3", class_="jeg_post_title")
+    title_link = title_tag.find("a") if title_tag else None
 
-    if not articles_html:
-        print("❌ NO ARTICLES — here is the first part of page:")
-        print(html[:800])
-        return []
+    if not title_link:
+        print("⚠ Title not found.")
+        return None
 
-    results = []
-    cutoff = datetime.utcnow() - timedelta(days=2)
+    title = title_link.get_text(strip=True)
+    url = title_link.get("href")
 
-    for block in articles_html:
-        title_tag = block.select_one("h3 a, h2 a, a")
-        if not title_tag:
-            continue
+    # Date
+    date_div = block.find("div", class_="jeg_meta_date")
+    date_text = date_div.get_text(strip=True).replace("", "") if date_div else ""
+    # Example: "December 11, 2025"
+    published_at = parse_date(date_text)
 
-        title = title_tag.get_text(strip=True)
-        url = title_tag.get("href", "")
+    # Excerpt
+    excerpt_div = block.find("div", class_="jeg_post_excerpt")
+    excerpt_p = excerpt_div.find("p") if excerpt_div else None
+    excerpt = excerpt_p.get_text(strip=True) if excerpt_p else ""
 
-        summary_tag = block.select_one("p, .entry-summary, .summary")
-        summary = summary_tag.get_text(strip=True) if summary_tag else ""
+    # Verify date is today
+    if not published_at:
+        print("⚠ Could not parse article date.")
+        return None
 
-        date_tag = block.select_one("time, .date")
-        date_str = date_tag.get_text(strip=True) if date_tag else ""
+    if published_at.date() != date.today():
+        print("📅 No new MonitorDaily article today.")
+        return None
 
-        published_dt = None
-        try:
-            published_dt = datetime.strptime(date_str, "%B %d, %Y")
-        except:
-            pass
-
-        if not published_dt or published_dt >= cutoff:
-            results.append({
-                "title": title,
-                "description": summary,
-                "url": url,
-                "published_at": published_dt.isoformat() if published_dt else None
-            })
-
-        if len(results) >= max_items:
-            break
-
-    print(f"MonitorDaily articles selected: {len(results)}")
-    return results
+    return {
+        "title": title,
+        "url": url,
+        "excerpt": excerpt,
+        "published_at": published_at,
+        "source": "MonitorDaily",
+    }

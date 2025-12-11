@@ -20,8 +20,8 @@ def _hf_summarize(text: str) -> str:
         "parameters": {
             "min_length": 40,
             "max_length": 120,
-            "do_sample": False
-        }
+            "do_sample": False,
+        },
     }
 
     try:
@@ -29,7 +29,7 @@ def _hf_summarize(text: str) -> str:
         resp.raise_for_status()
         data = resp.json()
 
-        if isinstance(data, list) and "summary_text" in data[0]:
+        if isinstance(data, list) and data and "summary_text" in data[0]:
             return data[0]["summary_text"].strip()
 
         return shorten(text, width=350, placeholder="…")
@@ -56,15 +56,22 @@ def summarize_article(article: dict) -> dict:
         s = sentence.strip(" .")
         if len(s) > 20:
             bullets.append(f"• {s}")
-
         if len(bullets) >= 3:
             break
 
-    return {
+    # Carry through any extra metadata (source, matched_keywords, etc.)
+    result = {
         "title": title,
         "url": url,
-        "bullets": bullets
+        "bullets": bullets,
     }
+
+    if "source" in article:
+        result["source"] = article["source"]
+    if "matched_keywords" in article:
+        result["matched_keywords"] = article["matched_keywords"]
+
+    return result
 
 
 def summarize_batch(articles):
