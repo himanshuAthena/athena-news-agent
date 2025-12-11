@@ -17,8 +17,9 @@ def fetch_efa_headlines() -> List[Dict]:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(EFA_HOME, wait_until="networkidle", timeout=120000)
-        page.wait_for_timeout(2000)
+        page.goto(EFA_HOME, wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(2000)  # allow images & JS to settle
+
         html = page.content()
         browser.close()
 
