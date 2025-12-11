@@ -47,9 +47,9 @@ def slack_format_monitor(md_article: Dict) -> str:
 def slack_format_efa(articles: List[Dict]) -> str:
     """Format EFA headlines."""
     if not articles:
-        return "*EFA Today's Headlines*\n\nNo headlines found."
+        return "*Equipment Finance Today's Headlines*\n\nNo headlines found."
 
-    lines = ["*EFA Today's Headlines*\n"]
+    lines = ["*Equipment Finance Today's Headlines*\n"]
 
     for art in articles:
         title = art["title"]
