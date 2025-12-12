@@ -14,12 +14,7 @@ from slack_client import send_slack_message
 # CLEAN TITLE LOGIC (MonitorDaily only)
 # --------------------------------------------------
 def clean_title(full_title: str) -> str:
-    """
-    Extracts the clean readable part of a MonitorDaily title.
-    Example:
-    "What Will Shape EF in 2026? Mitsubishi HC Capital America Identifies Four Key Trends"
-        --> "Mitsubishi HC Capital America Identifies Four Key Trends"
-    """
+    """Cleans MonitorDaily article titles by removing prefixes."""
     parts = re.split(r"\?|-|:|\u2013|\u2014", full_title)
     clean = parts[-1].strip()
     return clean if clean else full_title.strip()
