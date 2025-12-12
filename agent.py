@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, date
+from datetime import datetime
 from typing import List, Dict
 
-from monitor_daily import fetch_monitordaily_today
+from monitor_daily import fetch_monitordaily   # UPDATED IMPORT
 from efa import fetch_efa_headlines
 from slack_client import send_slack_message
 
@@ -26,38 +26,44 @@ def clean_title(full_title: str) -> str:
 
 
 # --------------------------------------------------
-# Slack Message Formatters
+# Slack Formatters
 # --------------------------------------------------
-def slack_format_monitor(md_article: Dict) -> str:
-    """Format MonitorDaily into Slack message with clickable clean title."""
+def slack_format_monitor(md: Dict) -> str:
     today_str = datetime.now().strftime("%B %d, %Y")
 
-    if not md_article:
-        return f"*Monitor Daily Today — {today_str}*\n\nNo MonitorDaily article found today."
+    main = md.get("main_article")
+    extra = md.get("extra_articles", [])
 
-    title = md_article.get("title", "Untitled Article").strip()
-    title = clean_title(title)
+    msg = f"*Monitor Daily Today — {today_str}*\n"
 
-    url = md_article.get("url", "").strip()
-    clickable = f"<{url}|{title}>"
+    # Main headline
+    if main:
+        title = clean_title(main["title"])
+        url = main["url"]
+        msg += f"\n👉 <{url}|{title}>\n"
+    else:
+        msg += "\nNo MonitorDaily main article published today.\n"
 
-    return f"*Monitor Daily Today — {today_str}*\n\n{clickable}"
+    # Extra headlines
+    if extra:
+        msg += "\n*More MonitorDaily Headlines:*\n\n"
+        for art in extra:
+            msg += f"👉 <{art['url']}|{art['title']}>\n\n"
+
+    return msg.strip()
 
 
 def slack_format_efa(articles: List[Dict]) -> str:
-    """Format EFA headlines."""
     if not articles:
         return "*Equipment Finance Today's Headlines*\n\nNo headlines found."
 
-    lines = ["*Equipment Finance Today's Headlines*\n"]
+    msg = "*Equipment Finance Today's Headlines*\n\n"
 
     for art in articles:
-        title = art["title"]
-        url = art["url"]
-        link = f"<{url}|{title}>"
-        lines.append(link)
+        msg += f"👉 <{art['url']}|{art['title']}>\n\n"
 
-    return "\n".join(lines)
+    return msg.strip()
+
 
 
 # --------------------------------------------------
@@ -66,14 +72,14 @@ def slack_format_efa(articles: List[Dict]) -> str:
 def main():
     print("=== Equipment Finance News Bot (Playwright) ===")
 
-    # 1️⃣ MonitorDaily (single daily article)
-    md_article = fetch_monitordaily_today()
+    # 1️⃣ Fetch MonitorDaily data (main + extra)
+    md_data = fetch_monitordaily()
 
-    # 2️⃣ EFA headlines (multiple)
+    # 2️⃣ Fetch EFA headlines
     efa_articles = fetch_efa_headlines()
 
     # 3️⃣ Build Slack message
-    md_section = slack_format_monitor(md_article)
+    md_section = slack_format_monitor(md_data)
     efa_section = slack_format_efa(efa_articles)
 
     final_message = md_section + "\n\n" + efa_section
@@ -83,7 +89,7 @@ def main():
     print("\n===========================\n")
 
     # 4️⃣ Send to Slack
-    send_slack_message(final_message)
+    # send_slack_message(final_message)
 
 
 if __name__ == "__main__":
