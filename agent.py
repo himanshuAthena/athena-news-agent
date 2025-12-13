@@ -42,8 +42,14 @@ def slack_format_monitor(md: Dict) -> str:
     # Extra headlines
     if extra:
         msg += "\n*More MonitorDaily Headlines:*\n\n"
-        for art in extra:
+        top_n = 5
+        shown = extra[:top_n]
+        for art in shown:
             msg += f"👉 <{art['url']}|{art['title']}>\n\n"
+
+        if len(extra) > top_n:
+            remaining = len(extra) - top_n
+            msg += f"_...and {remaining} more headlines not shown._\n"
 
     return msg.strip()
 
