@@ -5,8 +5,9 @@ import re
 from datetime import datetime
 from typing import List, Dict
 
-from monitor_daily import fetch_monitordaily   # UPDATED IMPORT
+from monitor_daily import fetch_monitordaily
 from efa import fetch_efa_headlines
+from techcrunch import fetch_techcrunch_headlines
 from slack_client import send_slack_message
 
 
@@ -37,26 +38,27 @@ def slack_format_monitor(md: Dict) -> str:
         url = main["url"]
         msg += f"\n👉 <{url}|{title}>\n"
     else:
-        msg += "\nNo MonitorDaily main article published today.\n"
+        msg += "\n_No MonitorDaily main article published today._\n"
 
     # Extra headlines
     if extra:
         msg += "\n*More MonitorDaily Headlines:*\n\n"
         top_n = 5
         shown = extra[:top_n]
+
         for art in shown:
             msg += f"👉 <{art['url']}|{art['title']}>\n\n"
 
         if len(extra) > top_n:
             remaining = len(extra) - top_n
-            msg += f"_...and {remaining} more headlines not shown._\n"
+            msg += f"_…and {remaining} more headlines not shown._\n"
 
     return msg.strip()
 
 
 def slack_format_efa(articles: List[Dict]) -> str:
     if not articles:
-        return "*Equipment Finance Today's Headlines*\n\nNo headlines found."
+        return "*Equipment Finance Today's Headlines*\n\n_No headlines found._"
 
     msg = "*Equipment Finance Today's Headlines*\n\n"
 
@@ -66,6 +68,17 @@ def slack_format_efa(articles: List[Dict]) -> str:
     return msg.strip()
 
 
+def slack_format_techcrunch(articles: List[Dict]) -> str:
+    if not articles:
+        return "*🤖 Tech & AI — TechCrunch*\n\n_No headlines found._"
+
+    msg = "*🤖 Tech & AI — TechCrunch*\n\n"
+
+    for art in articles:
+        msg += f"🧠 <{art['url']}|{art['title']}>\n\n"
+
+    return msg.strip()
+
 
 # --------------------------------------------------
 # MAIN BOT
@@ -73,23 +86,33 @@ def slack_format_efa(articles: List[Dict]) -> str:
 def main():
     print("=== Equipment Finance News Bot (Playwright) ===")
 
-    # 1️⃣ Fetch MonitorDaily data (main + extra)
+    # 1️⃣ MonitorDaily
     md_data = fetch_monitordaily()
 
-    # 2️⃣ Fetch EFA headlines
+    # 2️⃣ EFA
     efa_articles = fetch_efa_headlines()
 
-    # 3️⃣ Build Slack message
+    # 3️⃣ TechCrunch
+    tech_articles = fetch_techcrunch_headlines()
+
+    # 4️⃣ Build Slack message
     md_section = slack_format_monitor(md_data)
     efa_section = slack_format_efa(efa_articles)
+    tech_section = slack_format_techcrunch(tech_articles)
 
-    final_message = md_section + "\n\n" + efa_section
+    final_message = (
+        md_section
+        + "\n\n"
+        + efa_section
+        + "\n\n"
+        + tech_section
+    )
 
     print("\n===== MESSAGE TO SEND =====\n")
     print(final_message)
     print("\n===========================\n")
 
-    # 4️⃣ Send to Slack
+    # 5️⃣ Send to Slack
     send_slack_message(final_message)
 
 
