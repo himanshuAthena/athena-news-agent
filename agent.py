@@ -75,7 +75,7 @@ def slack_format_techcrunch(articles: List[Dict]) -> str:
     msg = "*🤖 Tech & AI — TechCrunch*\n\n"
 
     for art in articles:
-        msg += f"🧠 <{art['url']}|{art['title']}>\n\n"
+        msg += f"👉 <{art['url']}|{art['title']}>\n\n"
 
     return msg.strip()
 
